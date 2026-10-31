@@ -1,89 +1,17 @@
 /* CONFIGURACIÓN DE SUPABASE */
-        // Reemplaza con tus credenciales de tu proyecto en Supabase (https://supabase.com)
         const SUPABASE_URL = 'https://trbxnntrwfhspqnyjwkt.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyYnhubnRyd2Zoc3Bxbnlqd2t0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM0MDUzNDEsImV4cCI6MjEwODk4MTM0MX0.F9XVl5EhKO9B6_xJV8yEbU8fUsRluHRI_NSwf66CnbQ';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyYnhubnRyd2Zoc3Bxbnlqd2t0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAwMDAwMDB9...'; // <--- (Tu clave anon real aquí)
 
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        /* PRODUCTOS INICIALES (Fallback en caso de que la tabla esté vacía) */
-        const initialProducts = [
-            {
-                id: '1',
-                name: 'Camiseta Selección Boliviana 2026',
-                category: 'nacionales',
-                price: 350,
-                sizes: ['S', 'M', 'L', 'XL'],
-                image: 'imagenes/seleccion_bolivia.webp'
-            },
-            {
-                id: '2',
-                name: 'Camiseta Oficial Club Bolívar',
-                category: 'bolivianos',
-                price: 290,
-                sizes: ['S', 'M', 'L'],
-                image: 'imagenes/bolivar.webp'
-            },
-            {
-                id: '3',
-                name: 'Camiseta The Strongest Local',
-                category: 'bolivianos',
-                price: 290,
-                sizes: ['M', 'L', 'XL'],
-                image: 'imagenes/thestrongest.webp'
-            },
-            {
-                id: '4',
-                name: 'Camiseta Oriente Petrolero',
-                category: 'bolivianos',
-                price: 270,
-                sizes: ['S', 'M', 'L'],
-                image: 'imagenes/orientepetrolero.webp'
-            },
-            {
-                id: '5',
-                name: 'Camiseta Argentina 3 Estrellas',
-                category: 'nacionales',
-                price: 380,
-                sizes: ['S', 'M', 'L', 'XL'],
-                image: 'imagenes/argentina.jpg'
-            },
-            {
-                id: '6',
-                name: 'Camiseta Real Madrid LDC Edition',
-                category: 'internacionales',
-                price: 420,
-                sizes: ['S', 'M', 'L'],
-                image: 'imagenes/realmadrid.webp'
-            },
-            {
-                id: '7',
-                name: 'Balón Profesional FIFA Quality',
-                category: 'accesorios',
-                price: 220,
-                sizes: ['Única'],
-                image: 'imagenes/balon.webp'
-            },
-            {
-                id: '8',
-                name: 'Guantes de Arquero Pro Grip',
-                category: 'accesorios',
-                price: 180,
-                sizes: ['8', '9', '10'],
-                image: 'imagenes/guantes.webp'
-            }
-        ];
 
         /* STATE MANAGEMENT */
         let products = [];
         let cart = readStoredCart();
         let currentCategory = 'all';
         let searchQuery = '';
-        const storedHero = readStoredHero();
-        let siteImages = { hero: storedHero?.image || '', qr: readStoredQr() };
-        let heroDetails = {
-            title: storedHero?.title || 'Camiseta Selección Boliviana 2026',
-            price: storedHero?.price || 350
-        };
+        
+        let siteImages = { hero: '', qr: '' };
+        let heroDetails = { title: 'Cargando...', price: 0 };
         let appDialogResolver = null;
 
         function readStoredCart() {
@@ -95,55 +23,10 @@
             }
         }
 
-        function readStoredQr() {
-            try {
-                return localStorage.getItem('bs_site_qr') || 'imagenes/qr.jpeg';
-            } catch (error) {
-                return 'imagenes/qr.jpeg';
-            }
-        }
-
-function readStoredHero() {
-    try {
-        const hero = JSON.parse(localStorage.getItem('bs_site_hero') || 'null');
-        return hero && typeof hero.image === 'string' && typeof hero.title === 'string'
-            ? hero
-            : null;
-    } catch (error) {
-        return null;
-    }
-}
-
-async function useProductInHero(id) {
-    const product = products.find(item => item.id === id);
-    if (!product) return;
-
-    const heroData = {
-        id: product.id,
-        image: product.image,
-        title: product.name,
-        price: product.price
-    };
-
-    try {
-        localStorage.setItem('bs_site_hero', JSON.stringify(heroData));
-    } catch (error) {
-        await showNotice('No se pudo guardar el hero en el almacenamiento local.');
-        return;
-    }
-
-    siteImages.hero = product.image;
-    heroDetails = { title: product.name, price: product.price };
-    applySiteImages();
-    await showNotice(`${product.name} ahora aparece en el hero.`);
-}
-
         function saveCartToStorage() {
             try {
                 localStorage.setItem('bs_cart', JSON.stringify(cart));
-            } catch (error) {
-                showNotice('No se pudo guardar el carrito en este navegador.');
-            }
+            } catch (error) {}
         }
 
         function applySavedTheme() {
@@ -158,60 +41,54 @@ async function useProductInHero(id) {
             });
         }
 
-        /* CARGAR PRODUCTOS DESDE SUPABASE */
+        /* CARGAR DATOS DESDE SUPABASE */
         async function fetchProductsFromSupabase() {
+            const { data, error } = await supabaseClient.from('products').select('*');
+            if (!error && data) {
+                products = data;
+                renderProducts();
+            }
+        }
+
+        async function fetchSiteSettings() {
             const { data, error } = await supabaseClient
-                .from('products')
+                .from('site_settings')
                 .select('*');
 
-            if (error) {
-                console.error('Error al conectar con Supabase:', error);
-                await showNotice('Error al conectar con la base de datos en la nube.');
-                return;
+            if (!error && data) {
+                data.forEach(setting => {
+                    if (setting.key === 'hero') {
+                        siteImages.hero = setting.value.image || '';
+                        heroDetails = {
+                            title: setting.value.title || '',
+                            price: setting.value.price || 0
+                        };
+                    } else if (setting.key === 'qr') {
+                        siteImages.qr = setting.value.image || '';
+                    }
+                });
+                applySiteImages();
             }
-
-            if (!data || data.length === 0) {
-                // Si la tabla está vacía, insertamos los productos iniciales automáticamente
-                const { error: insertError } = await supabaseClient
-                    .from('products')
-                    .insert(initialProducts);
-                
-                if (!insertError) {
-                    products = [...initialProducts];
-                }
-            } else {
-                products = data;
-            }
-            renderProducts();
         }
 
         /* INITIALIZATION */
         window.addEventListener('DOMContentLoaded', async () => {
             applySavedTheme();
-            applySiteImages();
             await fetchProductsFromSupabase();
+            await fetchSiteSettings();
             updateCartUI();
             toggleAddressField();
 
-            // Escuchar cambios en tiempo real desde otros dispositivos
+            // Sincronización en Tiempo Real con Supabase
             supabaseClient
-                .channel('public:products')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, payload => {
+                .channel('public:db_changes')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
                     fetchProductsFromSupabase();
                 })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'site_settings' }, () => {
+                    fetchSiteSettings();
+                })
                 .subscribe();
-
-            // Spotlight Mouse Effect Binding
-            document.addEventListener('mousemove', (e) => {
-                const cards = document.querySelectorAll('.spotlight-card');
-                cards.forEach(card => {
-                    const rect = card.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const y = e.clientY - rect.top;
-                    card.style.setProperty('--mouse-x', `${x}px`);
-                    card.style.setProperty('--mouse-y', `${y}px`);
-                });
-            });
 
             // Search Handlers
             document.getElementById('searchInput').addEventListener('input', (e) => {
@@ -277,7 +154,6 @@ async function useProductInHero(id) {
                         </div>
                         <h3 class="font-bold text-base text-gray-900 dark:text-white leading-snug line-clamp-2">${p.name}</h3>
                         
-                        <!-- Size Badges -->
                         <div class="flex items-center gap-1.5 my-3 flex-wrap">
                             ${(Array.isArray(p.sizes) ? p.sizes : [p.sizes]).map(s => `<span class="text-[10px] font-semibold bg-gray-200/70 dark:bg-white/10 px-2 py-0.5 rounded-md text-gray-600 dark:text-gray-300">${s}</span>`).join('')}
                         </div>
@@ -297,7 +173,7 @@ async function useProductInHero(id) {
             });
         }
 
-        /* FILTER & SEARCH HANDLERS */
+        /* FILTER & SEARCH */
         function filterCategory(cat) {
             currentCategory = cat;
             document.querySelectorAll('.cat-pill').forEach(btn => {
@@ -317,7 +193,7 @@ async function useProductInHero(id) {
             filterCategory('all');
         }
 
-        /* CART OPERATIONS */
+        /* CART */
         function addToCart(productId) {
             const product = products.find(p => p.id === productId);
             if (!product) return;
@@ -386,9 +262,9 @@ async function useProductInHero(id) {
                         </div>
                     </div>
                     <div class="flex items-center gap-2 bg-gray-100 dark:bg-white/10 p-1 rounded-xl">
-                        <button onclick="updateCartQuantity('${item.id}', -1)" class="w-6 h-6 rounded-lg bg-white dark:bg-black/40 flex items-center justify-center text-xs font-bold hover:bg-gray-200 dark:hover:bg-white/20">-</button>
+                        <button onclick="updateCartQuantity('${item.id}', -1)" class="w-6 h-6 rounded-lg bg-white dark:bg-black/40 flex items-center justify-center text-xs font-bold">-</button>
                         <span class="text-xs font-bold px-1">${item.quantity}</span>
-                        <button onclick="updateCartQuantity('${item.id}', 1)" class="w-6 h-6 rounded-lg bg-white dark:bg-black/40 flex items-center justify-center text-xs font-bold hover:bg-gray-200 dark:hover:bg-white/20">+</button>
+                        <button onclick="updateCartQuantity('${item.id}', 1)" class="w-6 h-6 rounded-lg bg-white dark:bg-black/40 flex items-center justify-center text-xs font-bold">+</button>
                     </div>
                     <button onclick="removeFromCart('${item.id}')" class="text-gray-400 hover:text-red-500 p-1">
                         <i class="fa-solid fa-trash-can text-xs"></i>
@@ -401,7 +277,6 @@ async function useProductInHero(id) {
             const drawer = document.getElementById('cartDrawer');
             const content = document.getElementById('cartContent');
             const isOpen = drawer.classList.contains('pointer-events-auto');
-
             const shouldOpen = open !== null ? open : !isOpen;
 
             if (shouldOpen) {
@@ -443,35 +318,20 @@ async function useProductInHero(id) {
 
             const name = document.getElementById('custName').value.trim();
             if (!name) {
-                await showNotice('Por favor, ingresa tu nombre completo.');
-                document.getElementById('custName').focus();
+                await showNotice('Ingresa tu nombre completo.');
                 return;
             }
 
             const deliveryType = document.querySelector('input[name="deliveryType"]:checked').value;
-            let address = "";
-            if (deliveryType === 'domicilio') {
-                address = document.getElementById('custAddress').value.trim();
-                if (!address) {
-                    await showNotice('Por favor, ingresa la dirección.');
-                    document.getElementById('custAddress').focus();
-                    return;
-                }
+            let address = deliveryType === 'domicilio' ? document.getElementById('custAddress').value.trim() : '';
+            if (deliveryType === 'domicilio' && !address) {
+                await showNotice('Ingresa la dirección.');
+                return;
             }
 
-            const paymentType = deliveryType === 'domicilio'
-                ? document.querySelector('input[name="paymentType"]:checked').value
-                : '';
-
-            let text = `⚽ *NUEVO PEDIDO - TU FÚTBOL ONLINE*\n`;
-            text += `📍 *San José de Chiquitos*\n\n`;
-            text += `👤 *Cliente:* ${name}\n`;
-            text += `🚚 *Tipo de Entrega:* ${deliveryType === 'retiro' ? 'Retiro en Tienda' : 'Envío a Domicilio'}\n`;
-            if (deliveryType === 'domicilio') {
-                text += `🏠 *Dirección:* ${address}\n`;
-                text += `💳 *Método de pago:* ${paymentType === 'qr' ? 'QR' : 'Efectivo'}\n`;
-            }
-            text += `\n*Detalle del Pedido:*\n`;
+            let text = `⚽ *NUEVO PEDIDO - TU FÚTBOL ONLINE*\n👤 *Cliente:* ${name}\n🚚 *Entrega:* ${deliveryType === 'retiro' ? 'Retiro en Tienda' : 'Domicilio'}\n`;
+            if (address) text += `🏠 *Dirección:* ${address}\n`;
+            text += `\n*Detalle:*\n`;
 
             let total = 0;
             cart.forEach((item, i) => {
@@ -479,28 +339,24 @@ async function useProductInHero(id) {
                 total += sub;
                 text += `${i + 1}. ${item.name} (${item.selectedSize}) x${item.quantity} - ${sub} Bs.\n`;
             });
+            text += `\n💰 *TOTAL:* ${total.toFixed(2)} Bs.`;
 
-            text += `\n💰 *TOTAL FINAL:* ${total.toFixed(2)} Bs.`;
-
-            const phone = "59168825429";
-            const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
-            window.open(url, '_blank');
+            window.open(`https://wa.me/59168825429?text=${encodeURIComponent(text)}`, '_blank');
         }
 
-        /* ADMIN CRUD PANEL CON SUPABASE */
+        /* ADMIN CRUD PANEL */
         async function promptAdminLogin() {
             const pin = await showAppModal({
-                title: 'Acceso de administrador',
-                message: 'Ingresa el PIN para abrir el panel de administrador.',
+                title: 'Acceso de Administrador',
+                message: 'Ingresa el PIN para abrir el panel de Administrador',
                 inputType: 'password',
                 confirmText: 'Ingresar',
                 cancelText: 'Cancelar'
             });
-            if (pin === null) return;
             if (pin === '5050') {
                 renderAdminList();
                 openModal('adminModal');
-            } else {
+            } else if (pin !== null) {
                 await showNotice('PIN incorrecto.');
             }
         }
@@ -508,100 +364,81 @@ async function useProductInHero(id) {
         function renderAdminList() {
             const container = document.getElementById('adminProductList');
             const qrPreview = document.getElementById('siteQrPreview');
-            qrPreview.src = siteImages.qr;
-            qrPreview.classList.remove('hidden');
-            document.getElementById('siteQrImageData').value = siteImages.qr;
-            
+            if (siteImages.qr) {
+                qrPreview.src = siteImages.qr;
+                qrPreview.classList.remove('hidden');
+            }
             container.innerHTML = products.map(p => `
                 <div class="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-black/30 border border-gray-200 dark:border-white/5 text-xs">
                     <div class="flex items-center gap-3">
                         <img src="${p.image}" class="w-10 h-10 object-cover rounded-lg">
                         <div>
                             <p class="font-bold text-gray-900 dark:text-white">${p.name}</p>
-                            <span class="text-gray-400">${p.price} Bs. | Categoría: ${p.category}</span>
+                            <span class="text-gray-400">${p.price} Bs. | ${p.category}</span>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button onclick="useProductInHero('${p.id}')" class="px-2 py-1 bg-brand-500/10 text-brand-600 dark:text-brand-400 hover:bg-brand-600 hover:text-white rounded-lg font-semibold transition-all">
-                            Hero
-                        </button>
-                        <button onclick="editProduct('${p.id}')" class="px-3 py-1 bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white rounded-lg font-semibold transition-all">
-                            Editar
-                        </button>
-                        <button onclick="deleteProduct('${p.id}')" class="px-3 py-1 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg font-semibold transition-all">
-                            Eliminar
-                        </button>
+                        <button onclick="useProductInHero('${p.id}')" class="px-2 py-1 bg-brand-500/10 text-brand-600 dark:text-brand-400 hover:bg-brand-600 hover:text-white rounded-lg font-semibold transition-all">Hero</button>
+                        <button onclick="editProduct('${p.id}')" class="px-3 py-1 bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white rounded-lg font-semibold transition-all">Editar</button>
+                        <button onclick="deleteProduct('${p.id}')" class="px-3 py-1 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg font-semibold transition-all">Eliminar</button>
                     </div>
                 </div>
             `).join('');
         }
 
+        /* GUARDAR HERO DIRECTAMENTE EN SUPABASE */
         async function useProductInHero(id) {
             const product = products.find(item => item.id === id);
             if (!product) return;
 
-            try {
-                localStorage.setItem('bs_site_hero', JSON.stringify({
-                    image: product.image,
-                    title: product.name,
-                    price: product.price
-                }));
-            } catch (error) {}
+            const heroData = {
+                id: product.id,
+                image: product.image,
+                title: product.name,
+                price: product.price
+            };
 
-            siteImages.hero = product.image;
-            heroDetails = { title: product.name, price: product.price };
-            applySiteImages();
-            await showNotice(`${product.name} fijado en el hero.`);
+            const { error } = await supabaseClient
+                .from('site_settings')
+                .upsert([{ key: 'hero', value: heroData }]);
+
+            if (error) {
+                await showNotice('Error al actualizar el Hero en la nube.');
+                return;
+            }
+
+            await showNotice(`${product.name} fijado en el Hero para todos los dispositivos.`);
         }
 
-async function saveProduct(e) {
-    e.preventDefault();
-    const id = document.getElementById('prodId').value || Date.now().toString();
-    const name = document.getElementById('prodName').value;
-    const category = document.getElementById('prodCategory').value;
-    const price = parseFloat(document.getElementById('prodPrice').value);
-    const sizesStr = document.getElementById('prodSizes').value || 'M, L';
-    const sizes = sizesStr.split(',').map(s => s.trim());
-    const existing = products.find(p => p.id === id);
-    const image = document.getElementById('prodImageBase64').value || existing?.image;
+        async function saveProduct(e) {
+            e.preventDefault();
+            const id = document.getElementById('prodId').value || Date.now().toString();
+            const name = document.getElementById('prodName').value;
+            const category = document.getElementById('prodCategory').value;
+            const price = parseFloat(document.getElementById('prodPrice').value);
+            const sizesStr = document.getElementById('prodSizes').value || 'M, L';
+            const sizes = sizesStr.split(',').map(s => s.trim());
+            const existing = products.find(p => p.id === id);
+            const image = document.getElementById('prodImageBase64').value || existing?.image;
 
-    if (!image) {
-        await showNotice('Selecciona una imagen para el producto.');
-        return;
-    }
+            if (!image) {
+                await showNotice('Selecciona una imagen.');
+                return;
+            }
 
-    const newProd = { id, name, category, price, sizes, image };
+            const newProd = { id, name, category, price, sizes, image };
 
-    // Guardar o actualizar en Supabase
-    const { error } = await supabaseClient
-        .from('products')
-        .upsert([newProd]);
+            const { error } = await supabaseClient.from('products').upsert([newProd]);
+            if (error) {
+                await showNotice('Error al guardar en Supabase.');
+                return;
+            }
 
-    if (error) {
-        await showNotice('Error al guardar en Supabase.');
-        console.error(error);
-        return;
-    }
-
-    // SI ESTE PRODUCTO ESTABA EN EL HERO, ACTUALIZARLO TAMBIÉN EN LA CONFIGURACIÓN
-    try {
-        const currentHero = readStoredHero();
-        if (currentHero && (currentHero.id === id || currentHero.title === existing?.name)) {
-            const updatedHero = { id, image: newProd.image, title: newProd.name, price: newProd.price };
-            localStorage.setItem('bs_site_hero', JSON.stringify(updatedHero));
-            siteImages.hero = newProd.image;
-            heroDetails = { title: newProd.name, price: newProd.price };
-            applySiteImages();
+            await fetchProductsFromSupabase();
+            renderAdminList();
+            resetForm();
+            await showNotice('¡Producto guardado y sincronizado!');
         }
-    } catch (err) {
-        console.error('Error al actualizar el hero vinculado:', err);
-    }
-
-    await fetchProductsFromSupabase();
-    renderAdminList();
-    resetForm();
-    await showNotice('¡Producto guardado y sincronizado correctamente!');
-}
 
         function editProduct(id) {
             const p = products.find(prod => prod.id === id);
@@ -619,17 +456,8 @@ async function saveProduct(e) {
         }
 
         async function deleteProduct(id) {
-            if (await showConfirm('¿Estás seguro de eliminar este producto de la nube?')) {
-                const { error } = await supabaseClient
-                    .from('products')
-                    .delete()
-                    .eq('id', id);
-
-                if (error) {
-                    await showNotice('No se pudo eliminar el producto.');
-                    return;
-                }
-
+            if (await showConfirm('¿Eliminar este producto?')) {
+                await supabaseClient.from('products').delete().eq('id', id);
                 await fetchProductsFromSupabase();
                 renderAdminList();
             }
@@ -646,13 +474,6 @@ async function saveProduct(e) {
         async function handleFileSelect(event, targetInputId = 'prodImageBase64', previewId = 'imagePreview') {
             const file = event.target.files[0];
             if (!file) return;
-
-            if (!file.type.startsWith('image/')) {
-                await showNotice('Selecciona un archivo de imagen válido.');
-                event.target.value = '';
-                return;
-            }
-
             try {
                 const imageData = await compressImage(file);
                 document.getElementById(targetInputId).value = imageData;
@@ -661,7 +482,7 @@ async function saveProduct(e) {
                 preview.classList.remove('hidden');
                 preview.parentElement.classList.remove('hidden');
             } catch (error) {
-                await showNotice('No se pudo cargar la imagen.');
+                await showNotice('Error al cargar imagen.');
             }
         }
 
@@ -707,32 +528,22 @@ async function saveProduct(e) {
 
         async function saveSiteImage() {
             const imageData = document.getElementById('siteQrImageData').value;
-            if (!imageData) {
-                await showNotice('Selecciona una imagen QR.');
-                return;
+            if (!imageData) return;
+
+            const { error } = await supabaseClient
+                .from('site_settings')
+                .upsert([{ key: 'qr', value: { image: imageData } }]);
+
+            if (!error) {
+                siteImages.qr = imageData;
+                applySiteImages();
+                await showNotice('Imagen QR actualizada en la nube.');
             }
-            try {
-                localStorage.setItem('bs_site_qr', imageData);
-            } catch (error) {}
-            siteImages.qr = imageData;
-            applySiteImages();
-            await showNotice('Imagen QR actualizada.');
         }
 
-        /* MODAL HELPERS */
-        function showNotice(message) {
-            return showAppModal({ title: 'Aviso', message });
-        }
-
-        function showConfirm(message) {
-            return showAppModal({
-                title: 'Confirmar acción',
-                message,
-                confirmText: 'Confirmar',
-                cancelText: 'Cancelar'
-            });
-        }
-
+        /* MODALS */
+        function showNotice(message) { return showAppModal({ title: 'Aviso', message }); }
+        function showConfirm(message) { return showAppModal({ title: 'Confirmar', message, confirmText: 'Sí', cancelText: 'No' }); }
         function showAppModal({ title, message, inputType = null, confirmText = 'Aceptar', cancelText = null }) {
             const modal = document.getElementById('appDialog');
             const input = document.getElementById('appDialogInput');
@@ -748,15 +559,12 @@ async function saveProduct(e) {
 
             return new Promise(resolve => {
                 appDialogResolver = resolve;
-                document.getElementById('appDialogConfirm').onclick = () => {
-                    closeAppDialog(inputType ? input.value : true);
-                };
+                document.getElementById('appDialogConfirm').onclick = () => closeAppDialog(inputType ? input.value : true);
                 document.getElementById('appDialogCancel').onclick = () => closeAppDialog(null);
                 if (inputType) input.focus();
                 else document.getElementById('appDialogConfirm').focus();
             });
         }
-
         function closeAppDialog(result = null) {
             document.getElementById('appDialog').classList.add('hidden');
             if (appDialogResolver) {
@@ -765,20 +573,9 @@ async function saveProduct(e) {
                 resolve(result);
             }
         }
-
         function handleAppDialogKeydown(event) {
-            if (event.key === 'Escape') {
-                closeAppDialog(null);
-            } else if (event.key === 'Enter') {
-                event.preventDefault();
-                document.getElementById('appDialogConfirm').click();
-            }
+            if (event.key === 'Escape') closeAppDialog(null);
+            else if (event.key === 'Enter') { event.preventDefault(); document.getElementById('appDialogConfirm').click(); }
         }
-
-        function openModal(id) {
-            document.getElementById(id).classList.remove('hidden');
-        }
-
-        function closeModal(id) {
-            document.getElementById(id).classList.add('hidden');
-        }
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
