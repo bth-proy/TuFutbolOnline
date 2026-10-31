@@ -1,6 +1,6 @@
 /* CONFIGURACIÓN DE SUPABASE */
         const SUPABASE_URL = 'https://trbxnntrwfhspqnyjwkt.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyYnhubnRyd2Zoc3Bxbnlqd2t0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAwMDAwMDB9...'; // <--- (Tu clave anon real aquí)
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyYnhubnRyd2Zoc3Bxbnlqd2t0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM0MDUzNDEsImV4cCI6MjEwODk4MTM0MX0.F9XVl5EhKO9B6_xJV8yEbU8fUsRluHRI_NSwf66CnbQ'; 
 
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
