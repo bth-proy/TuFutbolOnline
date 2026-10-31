@@ -491,13 +491,13 @@ async function useProductInHero(id) {
         async function promptAdminLogin() {
             const pin = await showAppModal({
                 title: 'Acceso de administrador',
-                message: 'Ingresa el PIN para abrir el panel.',
+                message: 'Ingresa el PIN para abrir el panel de administrador.',
                 inputType: 'password',
                 confirmText: 'Ingresar',
                 cancelText: 'Cancelar'
             });
             if (pin === null) return;
-            if (pin === '1234') {
+            if (pin === '5050') {
                 renderAdminList();
                 openModal('adminModal');
             } else {
