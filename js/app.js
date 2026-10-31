@@ -427,7 +427,7 @@
                 text += `\n\n📲 *Después de pagar, envía el comprobante por este mismo chat para confirmar tu pedido y coordinar el envío.*`;
             }
 
-            const phone = "59175528766"; // Número WhatsApp actualizado de la tienda
+            const phone = "59168825429"; // Número WhatsApp actualizado de la tienda
             const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
             window.open(url, '_blank');
         }
