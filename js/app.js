@@ -510,10 +510,14 @@
             });
         }
 
-        function applySiteImages() {
-            if (siteImages.hero) document.getElementById('heroImage').src = siteImages.hero;
+function applySiteImages() {
+            const heroImg = document.getElementById('heroImage');
+            if (siteImages.hero) {
+                heroImg.src = siteImages.hero;
+            }
             document.getElementById('heroTitle').textContent = heroDetails.title;
             document.getElementById('heroPrice').textContent = `${heroDetails.price} Bs.`;
+            
             const qrImage = document.getElementById('checkoutQrImage');
             const qrUnavailable = document.getElementById('checkoutQrUnavailable');
             if (siteImages.qr) {
