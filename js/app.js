@@ -103,16 +103,40 @@
             }
         }
 
-        function readStoredHero() {
-            try {
-                const hero = JSON.parse(localStorage.getItem('bs_site_hero') || 'null');
-                return hero && typeof hero.image === 'string' && typeof hero.title === 'string'
-                    ? hero
-                    : null;
-            } catch (error) {
-                return null;
-            }
-        }
+function readStoredHero() {
+    try {
+        const hero = JSON.parse(localStorage.getItem('bs_site_hero') || 'null');
+        return hero && typeof hero.image === 'string' && typeof hero.title === 'string'
+            ? hero
+            : null;
+    } catch (error) {
+        return null;
+    }
+}
+
+async function useProductInHero(id) {
+    const product = products.find(item => item.id === id);
+    if (!product) return;
+
+    const heroData = {
+        id: product.id,
+        image: product.image,
+        title: product.name,
+        price: product.price
+    };
+
+    try {
+        localStorage.setItem('bs_site_hero', JSON.stringify(heroData));
+    } catch (error) {
+        await showNotice('No se pudo guardar el hero en el almacenamiento local.');
+        return;
+    }
+
+    siteImages.hero = product.image;
+    heroDetails = { title: product.name, price: product.price };
+    applySiteImages();
+    await showNotice(`${product.name} ahora aparece en el hero.`);
+}
 
         function saveCartToStorage() {
             try {
@@ -467,13 +491,13 @@
         async function promptAdminLogin() {
             const pin = await showAppModal({
                 title: 'Acceso de administrador',
-                message: 'Ingresa el PIN para abrir el panel de administrador',
+                message: 'Ingresa el PIN para abrir el panel.',
                 inputType: 'password',
                 confirmText: 'Ingresar',
                 cancelText: 'Cancelar'
             });
             if (pin === null) return;
-            if (pin === '5050') {
+            if (pin === '1234') {
                 renderAdminList();
                 openModal('adminModal');
             } else {
@@ -530,40 +554,54 @@
             await showNotice(`${product.name} fijado en el hero.`);
         }
 
-        async function saveProduct(e) {
-            e.preventDefault();
-            const id = document.getElementById('prodId').value || Date.now().toString();
-            const name = document.getElementById('prodName').value;
-            const category = document.getElementById('prodCategory').value;
-            const price = parseFloat(document.getElementById('prodPrice').value);
-            const sizesStr = document.getElementById('prodSizes').value || 'M, L';
-            const sizes = sizesStr.split(',').map(s => s.trim());
-            const existing = products.find(p => p.id === id);
-            const image = document.getElementById('prodImageBase64').value || existing?.image;
+async function saveProduct(e) {
+    e.preventDefault();
+    const id = document.getElementById('prodId').value || Date.now().toString();
+    const name = document.getElementById('prodName').value;
+    const category = document.getElementById('prodCategory').value;
+    const price = parseFloat(document.getElementById('prodPrice').value);
+    const sizesStr = document.getElementById('prodSizes').value || 'M, L';
+    const sizes = sizesStr.split(',').map(s => s.trim());
+    const existing = products.find(p => p.id === id);
+    const image = document.getElementById('prodImageBase64').value || existing?.image;
 
-            if (!image) {
-                await showNotice('Selecciona una imagen para el producto.');
-                return;
-            }
+    if (!image) {
+        await showNotice('Selecciona una imagen para el producto.');
+        return;
+    }
 
-            const newProd = { id, name, category, price, sizes, image };
+    const newProd = { id, name, category, price, sizes, image };
 
-            // Guardar o actualizar en Supabase
-            const { error } = await supabaseClient
-                .from('products')
-                .upsert([newProd]);
+    // Guardar o actualizar en Supabase
+    const { error } = await supabaseClient
+        .from('products')
+        .upsert([newProd]);
 
-            if (error) {
-                await showNotice('Error al guardar en Supabase.');
-                console.error(error);
-                return;
-            }
+    if (error) {
+        await showNotice('Error al guardar en Supabase.');
+        console.error(error);
+        return;
+    }
 
-            await fetchProductsFromSupabase();
-            renderAdminList();
-            resetForm();
-            await showNotice('¡Producto guardado y sincronizado en la nube!');
+    // SI ESTE PRODUCTO ESTABA EN EL HERO, ACTUALIZARLO TAMBIÉN EN LA CONFIGURACIÓN
+    try {
+        const currentHero = readStoredHero();
+        if (currentHero && (currentHero.id === id || currentHero.title === existing?.name)) {
+            const updatedHero = { id, image: newProd.image, title: newProd.name, price: newProd.price };
+            localStorage.setItem('bs_site_hero', JSON.stringify(updatedHero));
+            siteImages.hero = newProd.image;
+            heroDetails = { title: newProd.name, price: newProd.price };
+            applySiteImages();
         }
+    } catch (err) {
+        console.error('Error al actualizar el hero vinculado:', err);
+    }
+
+    await fetchProductsFromSupabase();
+    renderAdminList();
+    resetForm();
+    await showNotice('¡Producto guardado y sincronizado correctamente!');
+}
 
         function editProduct(id) {
             const p = products.find(prod => prod.id === id);
